@@ -11,10 +11,12 @@ import base64
 import hmac
 import hashlib
 import time
-from threading import Thread
+import multiprocessing
 from websocket import create_connection, WebSocketConnectionClosedException
 from pymongo import MongoClient
 from cbpro.cbpro_auth import get_auth_headers
+
+
 
 
 class WebsocketClient(object):
@@ -43,8 +45,8 @@ class WebsocketClient(object):
 
         self.stop = False
         self.on_open()
-        self.thread = Thread(target=_go)
-        self.keepalive = Thread(target=self._keepalive)
+        self.thread = multiprocessing.Process(target=_go)
+        self.keepalive = multiprocessing.Process(target=self._keepalive)
         self.thread.start()
 
     def _connect(self):
