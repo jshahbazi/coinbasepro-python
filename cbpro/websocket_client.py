@@ -12,6 +12,7 @@ import hmac
 import hashlib
 import time
 import multiprocessing
+from threading import Thread
 from websocket import create_connection, WebSocketConnectionClosedException
 from pymongo import MongoClient
 from cbpro.cbpro_auth import get_auth_headers
@@ -26,7 +27,6 @@ class WebsocketClient(object):
         self.products = products
         self.channels = channels
         self.type = message_type
-        self.stop = True
         self.error = None
         self.ws = None
         self.thread = None
@@ -36,17 +36,18 @@ class WebsocketClient(object):
         self.api_passphrase = api_passphrase
         self.should_print = should_print
         self.mongo_collection = mongo_collection
+        self.shutdown_event = multiprocessing.Event()
 
     def start(self):
         def _go():
             self._connect()
+            self.keepalive = Thread(target=self._keepalive)
             self._listen()
             self._disconnect()
 
         self.stop = False
         self.on_open()
         self.thread = multiprocessing.Process(target=_go)
-        self.keepalive = multiprocessing.Process(target=self._keepalive)
         self.thread.start()
 
     def _connect(self):
@@ -77,13 +78,13 @@ class WebsocketClient(object):
         self.ws.send(json.dumps(sub_params))
 
     def _keepalive(self, interval=30):
-        while self.ws.connected:
+        while not self.shutdown_event.is_set():
             self.ws.ping("keepalive")
             time.sleep(interval)
 
     def _listen(self):
-        self.keepalive.start()
-        while not self.stop:
+        self.keepalive.start()        
+        while not self.shutdown_event.is_set():
             try:
                 data = self.ws.recv()
                 msg = json.loads(data)
@@ -100,13 +101,11 @@ class WebsocketClient(object):
                 self.ws.close()
         except WebSocketConnectionClosedException as e:
             pass
-        finally:
-            self.keepalive.join()
 
         self.on_close()
 
     def close(self):
-        self.stop = True   # will only disconnect after next msg recv
+        self.shutdown_event.set()
         self._disconnect() # force disconnect so threads can join
         self.thread.join()
 
@@ -126,7 +125,7 @@ class WebsocketClient(object):
 
     def on_error(self, e, data=None):
         self.error = e
-        self.stop = True
+        self.shutdown_event.set()
         print('{} - data: {}'.format(e, data))
 
 
