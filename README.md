@@ -365,6 +365,11 @@ python -m pytest
 ```
 
 ## Change Log
+*Forked*
+- Moved threading over to multiprocessing package
+- Removed print statements from order_book
+- Moved keepalive to a thread within the spawned multiprocessing process
+
 *1.1.2* **Current PyPI release**
 - Refactor project for Coinbase Pro
 - Major overhaul on how pagination is handled
