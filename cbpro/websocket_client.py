@@ -45,7 +45,6 @@ class WebsocketClient(object):
             self._listen()
             self._disconnect()
 
-        self.stop = False
         self.on_open()
         self.thread = multiprocessing.Process(target=_go)
         self.thread.start()
@@ -83,7 +82,7 @@ class WebsocketClient(object):
             time.sleep(interval)
 
     def _listen(self):
-        self.keepalive.start()        
+        self.keepalive.start()
         while not self.shutdown_event.is_set():
             try:
                 data = self.ws.recv()
