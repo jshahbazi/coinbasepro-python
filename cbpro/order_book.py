@@ -13,8 +13,8 @@ from cbpro.websocket_client import WebsocketClient
 
 
 class OrderBook(WebsocketClient):
-    def __init__(self, product_id='BTC-USD', log_to=None):
-        super(OrderBook, self).__init__(products=product_id)
+    def __init__(self, product_id='BTC-USD', log_to=None, url='wss://ws-feed.pro.coinbase.com'):
+        super(OrderBook, self).__init__(products=product_id, url=url)
         self._asks = SortedDict()
         self._bids = SortedDict()
         self._client = PublicClient()
