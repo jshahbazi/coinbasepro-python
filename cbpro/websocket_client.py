@@ -22,7 +22,7 @@ from cbpro.cbpro_auth import get_auth_headers
 
 class WebsocketClient(object):
     def __init__(self, url="wss://ws-feed.pro.coinbase.com", products=None, message_type="subscribe", mongo_collection=None,
-                 should_print=True, auth=False, api_key="", api_secret="", api_passphrase="", channels=None):
+                 should_print=False, auth=False, api_key="", api_secret="", api_passphrase="", channels=None):
         self.url = url
         self.products = products
         self.channels = channels
@@ -125,7 +125,8 @@ class WebsocketClient(object):
     def on_error(self, e, data=None):
         self.error = e
         self.shutdown_event.set()
-        print('{} - data: {}'.format(e, data))
+        if self.should_print:
+            print('{} - data: {}'.format(e, data))
 
 
 if __name__ == "__main__":
