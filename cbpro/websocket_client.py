@@ -13,10 +13,12 @@ import hashlib
 import time
 import multiprocessing
 from threading import Thread
-from websocket import create_connection, WebSocketConnectionClosedException
+# from websocket import create_connection, WebSocketConnectionClosedException
+import asyncio
+import websockets
 from pymongo import MongoClient
 from cbpro.cbpro_auth import get_auth_headers
-
+import traceback
 
 
 
@@ -40,14 +42,15 @@ class WebsocketClient(object):
 
     def start(self):
         def _go():
-            self._connect()
-            self.keepalive = Thread(target=self._keepalive)
-            self._listen()
+            sub_params = self._connect()
+            # self.keepalive = Thread(target=self._keepalive)
+            asyncio.get_event_loop().run_until_complete(self._listen(sub_params))
             self._disconnect()
 
         self.on_open()
         self.thread = multiprocessing.Process(target=_go)
         self.thread.start()
+        
 
     def _connect(self):
         if self.products is None:
@@ -72,35 +75,29 @@ class WebsocketClient(object):
             sub_params['passphrase'] = auth_headers['CB-ACCESS-PASSPHRASE']
             sub_params['timestamp'] = auth_headers['CB-ACCESS-TIMESTAMP']
 
-        self.ws = create_connection(self.url)
+        return sub_params
 
-        self.ws.send(json.dumps(sub_params))
+    # def _keepalive(self, interval=30):
+    #     while not self.shutdown_event.is_set():
+    #         self.ws.ping("keepalive")
+    #         time.sleep(interval)
 
-    def _keepalive(self, interval=30):
-        while not self.shutdown_event.is_set():
-            self.ws.ping("keepalive")
-            time.sleep(interval)
-
-    def _listen(self):
-        self.keepalive.start()
-        while not self.shutdown_event.is_set():
-            try:
-                data = self.ws.recv()
-                msg = json.loads(data)
-            except ValueError as e:
-                self.on_error(e)
-            except Exception as e:
-                self.on_error(e)
-            else:
-                self.on_message(msg)
+    async def _listen(self,sub_params):
+        async with websockets.connect(self.url) as websocket:
+            await websocket.send(json.dumps(sub_params))
+            # self.keepalive.start()
+            while not self.shutdown_event.is_set():
+                try:
+                    data = await websocket.recv()
+                    msg = json.loads(data)
+                except ValueError as e:
+                    self.on_error(e)
+                except Exception as e:
+                    self.on_error(e)
+                else:
+                    self.on_message(msg)
 
     def _disconnect(self):
-        try:
-            if self.ws:
-                self.ws.close()
-        except WebSocketConnectionClosedException as e:
-            pass
-
         self.on_close()
 
     def close(self):
@@ -125,8 +122,9 @@ class WebsocketClient(object):
     def on_error(self, e, data=None):
         self.error = e
         self.shutdown_event.set()
-        if self.should_print:
-            print('{} - data: {}'.format(e, data))
+        # if self.should_print:
+        # print('{} - data: {}'.format(e, data))
+        # print(f"Websocket error: {e}")
 
 
 if __name__ == "__main__":
