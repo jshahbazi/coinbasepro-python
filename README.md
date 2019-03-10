@@ -368,7 +368,8 @@ python -m pytest
 *Forked*
 - Moved threading over to multiprocessing package
 - Removed print statements from order_book
-- Moved keepalive to a thread within the spawned multiprocessing process
+- Converted to use the websockets library and asyncio
+- Removed keepalive since no longer needed
 
 *1.1.2* **Current PyPI release**
 - Refactor project for Coinbase Pro
